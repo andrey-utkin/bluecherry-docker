@@ -5,12 +5,15 @@ services:
     container_name: bc-mysql
     command: --default-authentication-plugin=mysql_native_password
     restart: always
-    networks: 
-      - bluecherry_net
+    network_mode: host
     volumes:
       - ./database:/var/lib/mysql
+      - ./var_run_mysqld:/var/run/mysqld
+      # TODO share /var/run/mysqld/mysqld.sock between containers
       - "/etc/timezone:/etc/timezone:ro"
       - "/etc/localtime:/etc/localtime:ro"
+    ports:
+      - "3306:3306/tcp"
     environment:
       MYSQL_ROOT_PASSWORD: $MYSQL_ADMIN_PASSWORD
       TZ: $TZ
@@ -22,7 +25,6 @@ services:
       - NET_BIND_SERVICE
     build:
       context: ./server/
-      network: bluecherry_net
       args:
         MYSQL_ADMIN_PASSWORD: $MYSQL_ADMIN_PASSWORD
         # MYSQL_ADMIN_LOGIN: $MYSQL_ADMIN_LOGIN
@@ -34,13 +36,13 @@ services:
         # BLUECHERRY_LINUX_GROUP_ID: $BLUECHERRY_LINUX_GROUP_ID
         # BLUECHERRY_LINUX_USER_ID: $BLUECHERRY_LINUX_USER_ID
     restart: unless-stopped
-    networks: 
-      - bluecherry_net
+    network_mode: host # for ONVIF discovery
     volumes:
       - ./recordings:/var/lib/bluecherry/recordings
       - ./data/bconf:/var/lib/bluecherry/.local/share/data/bconf
       - ./data/letsencrypt:/usr/share/bluecherry/nginx-includes/letsencrypt
       - ./data/backups:/usr/share/bluecherry/backups
+      - ./var_run_mysqld:/var/run/mysqld
       # - ./server/bluecherry.conf:/etc/bluecherry.conf
     # Enable this only if you have a supported VAAPI device and /dev/dri exists on the host system.
     # devices:
@@ -52,39 +54,3 @@ services:
       - ./.env
     depends_on:
       - bc-mysql
-
-  mta_mailer:
-      container_name: bc-mail
-      cap_add:
-        - NET_BIND_SERVICE
-      image: juanluisbaptiste/postfix:latest
-# We assume bc-mail is only used by Bluecherry apps and not something else on the network
-#      expose:
-#        - "25"
-      dns:
-         - 8.8.8.8
-#      ports:
-#        - "25:25/tcp"
-      env_file:
-        - .mailenv
-      restart: always
-      networks:
-      - bluecherry_net
-      volumes:
-        - "/etc/localtime:/etc/localtime:ro"
-
-  uptime-kuma:
-    image: louislam/uptime-kuma:latest
-    container_name: uptime-kuma
-    volumes:
-      - ./uptime-kuma-data:/app/data
-      - /var/run/docker.sock:/var/run/docker.sock
-    ports:
-      - "1337:3001"
-    networks:
-     - bluecherry_net
-    restart: always      
-
-networks:
-  bluecherry_net:
-    name: bluecherry_net
