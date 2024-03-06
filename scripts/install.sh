@@ -41,7 +41,7 @@ docker_compose_init() {
     cp "$workingpath"/bluecherry-docker/mailenv-example "$workingpath"/bluecherry-docker/.mailenv
 
     docker compose pull
-    docker compose up bc-mysql -d
+    docker compose up -d bc-mysql
 
     echo "Sleeping 45 seconds to make sure the database is initialized correctly..."
 
